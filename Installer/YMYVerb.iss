@@ -1,6 +1,6 @@
 ; Inno Setup script. Build:  iscc /DVST3Dir="C:\path\to\YMYVerb.vst3" Installer\YMYVerb.iss
 #define MyAppName "YMYVerb"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.1"
 #ifndef StandaloneExe
   #define StandaloneExe "..\build\YMYVerb_artefacts\Release\Standalone\YMYVerb.exe"
 #endif

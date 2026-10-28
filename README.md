@@ -1,24 +1,25 @@
 # YMYVerb — Vocal Reverb (YMY Records · Made ORYMY)
 *The Sweet Space of Bachata.* Reverb vocal **VST3 + Standalone** para FL Studio / Windows, pensado solo para el espacio vocal de la bachata: predelay sincronizado al tempo, colas cálidas y presets por estilo.
 
-## Estado real de esta entrega (léelo primero)
+## Estado real de esta entrega
 | Pieza | Estado |
 |---|---|
-| Motor DSP (FDN 8 líneas, predelay, sync, ducking, tono, estéreo) | Escrito y **probado** con tests automáticos (ver abajo) |
-| 34 presets de fábrica (JSON) | Hechos. Son **puntos de partida por diseño, no calibrados de oído** |
-| Plugin JUCE (parámetros, procesador, interfaz con skin, micrófono reactivo) | Escrito. **NO compilado todavía**: el entorno donde se escribió no tiene JUCE ni Windows |
-| Skin de la interfaz (`Resources/skin_*.png`) | Generado con `scripts/gen_skin.py` a partir de tu imagen; revisado a ojo, **no visto aún dentro del plugin** |
-| YMYVerb.vst3 / YMYVerb.exe (Standalone) / YMYVerb_Setup.exe | **No existen aún.** Se generan compilando en Windows (más abajo) |
-| Prueba dentro de FL Studio | **Pendiente** |
+| Motor DSP (FDN 8 líneas, predelay, sync, ducking, tono, estéreo) | Compila en Windows x64 y **pasa los tests DSP automáticos** |
+| 34 presets de fábrica (JSON) | Incluidos; son **puntos de partida por diseño, no ajustes calibrados de oído** |
+| Plugin JUCE y editor con skin | Compilados en Release x64; **pluginval strictness 5 pasó**, incluyendo abrir el editor, abrirlo mientras procesa, audio, automatización, estado y buses |
+| VST3, aplicación Standalone e instalador | Generados por GitHub Actions y comprobados como archivos de salida |
+| Instalación | El Setup instala el VST3 en `C:\Program Files\Common Files\VST3\YMYVerb.vst3` y la aplicación independiente en Program Files |
+| Prueba dentro de FL Studio con audio real | **Pendiente de prueba en una instalación de usuario** |
 
-Puede haber errores de compilación en la capa JUCE (GUI/procesador). Si salen, mándame el mensaje exacto y lo corrijo.
+Nota de validación: el subtest interno de `vst3validator` de Steinberg se omite si esa herramienta no está configurada en el entorno de CI. Esto no impidió que la batería de `pluginval` strictness 5 terminara con `SUCCESS`. Los presets y el sonido todavía requieren escucha crítica con voces reales.
 
 ## Cómo obtener el .vst3 y el Setup.exe
-### Opción A (la más fácil, sin instalar nada): GitHub Actions
-1. Crea un repositorio en GitHub y sube todo el contenido de esta carpeta.
-2. Pestaña **Actions** → "Build YMYVerb (Windows)" (se ejecuta solo al subir; o "Run workflow").
-3. Al terminar, descarga el artefacto **YMYVerb-windows**: contiene `YMYVerb_Setup.exe`, `YMYVerb.vst3` y `YMYVerb.exe` (Standalone).
-Esto compila en Release x64, corre los tests DSP y arma el instalador con Inno Setup.
+### Opción A: GitHub Actions
+1. En este repositorio, abre la pestaña **Actions** y selecciona **Build YMYVerb (Windows)**.
+2. Para repetir la compilación manualmente, pulsa **Run workflow**; también se ejecuta automáticamente al hacer push a la rama principal o a una rama `fix/**`.
+3. Descarga el artefacto **YMYVerb-PRO-Windows-x64**. Dentro encontrarás `dist/YMYVerb_Setup.exe`, el ZIP con `YMYVerb.vst3` y `YMYVerb.exe`, y el log de `pluginval`.
+
+El flujo compila Release x64 con Visual Studio 2022, ejecuta los tests DSP, comprueba que existen el bundle VST3 y el Standalone, prueba el plugin con `pluginval` strictness 5 y construye el instalador con Inno Setup 6.
 
 ### Opción B: en tu PC
 Instala Visual Studio 2022 (carga de trabajo C++), CMake e Inno Setup 6, y ejecuta `scripts\build_windows.bat`. Resultado: `dist\YMYVerb_Setup.exe`. Necesita Internet una vez para bajar JUCE 8.0.4.
@@ -40,7 +41,7 @@ Romeo Santos · Raulin Rodriguez · Joe Veras (4 cada uno) · Bachata 90s · 200
 
 ## Pruebas DSP ejecutadas (g++ 13, Linux, `Tests/test_dsp.cpp`)
 Silencio→silencio; RT60 medido vs. pedido (Plate/Hall/Hybrid a 1, 2.8 y 6 s: sale ~10 % más corto que lo pedido, ej. 6 s → 5.3-5.5 s); estabilidad 20 s con ruido fuerte y todos los controles al máximo en los 6 algoritmos (sin crecimiento; el limitador interno de seguridad actúa en ese extremo); 5 sample rates (44.1-192 kHz) × 7 tamaños de buffer; predelay (sin fuga antes del tiempo fijado); ducking (-18 dB con voz, cola recuperada en pausas); sync (125 ms, 83.3 ms, 187.5 ms, plegado a 250 ms).
-**No probado:** audio con voces reales, escucha de los presets, CPU en Ryzen 7, GUI, FL Studio, guardado/restauración de proyecto, Undo/Redo, validador VST3.
+**Aún no probado en condiciones de usuario:** mezcla con voces reales, escucha crítica de los presets, CPU en Ryzen 7 y apertura dentro de FL Studio de tu instalación concreta. `pluginval` sí verificó el editor, el audio, el estado y la automatización; el validador independiente de Steinberg no está configurado en esta CI.
 
 ## Estructura
 `Source/DSP` (motor y sync, sin JUCE) · `Source/PluginProcessor.*` · `Source/PluginEditor.*` · `Source/Presets/factory_presets.json` (generado con `scripts/gen_presets.py`) · `Tests` · `Installer/YMYVerb.iss` · `.github/workflows/build.yml` · `Resources/Interfaz_referencia.png`.

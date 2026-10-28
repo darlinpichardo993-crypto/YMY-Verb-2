@@ -1,0 +1,116 @@
+name: Build YMYVerb (Windows)
+
+on:
+  push:
+    branches:
+      - main
+      - "fix/**"
+    paths-ignore:
+      - "README.md"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure x64 Release
+        shell: pwsh
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+
+      - name: Build VST3, Standalone and DSP tests
+        shell: pwsh
+        run: cmake --build build --config Release --parallel 2
+
+      - name: Run DSP tests
+        shell: pwsh
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Verify build outputs
+        shell: pwsh
+        run: |
+          $vst3 = Join-Path $env:GITHUB_WORKSPACE "build\YMYVerb_artefacts\Release\VST3\YMYVerb.vst3"
+          $standalone = Join-Path $env:GITHUB_WORKSPACE "build\YMYVerb_artefacts\Release\Standalone\YMYVerb.exe"
+          if (!(Test-Path $vst3 -PathType Container)) { throw "VST3 bundle not found: $vst3" }
+          if (!(Test-Path (Join-Path $vst3 "Contents\x86_64-win\YMYVerb.vst3") -PathType Leaf)) {
+            throw "VST3 Windows x64 binary is missing."
+          }
+          if (!(Test-Path $standalone -PathType Leaf)) { throw "Standalone executable not found: $standalone" }
+          Write-Host "VST3 verified: $vst3"
+          Write-Host "Standalone verified: $standalone"
+
+
+      - name: Validate VST3 with pluginval (strictness 5)
+        shell: pwsh
+        run: |
+          $root = $env:GITHUB_WORKSPACE
+          $vst3 = Join-Path $root "build\YMYVerb_artefacts\Release\VST3\YMYVerb.vst3"
+          $zip = Join-Path $root "pluginval.zip"
+          $dir = Join-Path $root "pluginval"
+          $logs = Join-Path $root "pluginval-logs"
+          Invoke-WebRequest -Uri "https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Windows.zip" -OutFile $zip
+          Expand-Archive -Path $zip -DestinationPath $dir -Force
+          $validator = Get-ChildItem $dir -Filter "pluginval.exe" -File -Recurse | Select-Object -First 1
+          if ($null -eq $validator) { throw "pluginval.exe was not found inside the official Windows release." }
+          New-Item -ItemType Directory -Force -Path $logs | Out-Null
+          $stdout = Join-Path $root "pluginval-stdout.txt"
+          $stderr = Join-Path $root "pluginval-stderr.txt"
+          $process = Start-Process -FilePath $validator.FullName -ArgumentList @("--strictness-level", "5", "--timeout-ms", "120000", "--output-dir", $logs, "--validate", $vst3) -PassThru -Wait -NoNewWindow -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+          if (Test-Path $stdout) { Get-Content $stdout }
+          if (Test-Path $stderr) { Get-Content $stderr }
+          if ($process.ExitCode -ne 0) {
+            Get-ChildItem $logs -File -ErrorAction SilentlyContinue | ForEach-Object { Write-Host (Get-Content $_.FullName -Raw) }
+            throw "pluginval failed with exit code $($process.ExitCode)."
+          }
+          Write-Host "pluginval strictness level 5 passed."
+
+      - name: Ensure Inno Setup 6 is installed
+        shell: pwsh
+        run: |
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) {
+            choco install innosetup --yes --no-progress
+          }
+          if (!(Test-Path $iscc)) { throw "Inno Setup 6 compiler (ISCC.exe) was not found." }
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $root = $env:GITHUB_WORKSPACE
+          $vst3 = Join-Path $root "build\YMYVerb_artefacts\Release\VST3\YMYVerb.vst3"
+          $standalone = Join-Path $root "build\YMYVerb_artefacts\Release\Standalone\YMYVerb.exe"
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          New-Item -ItemType Directory -Force -Path (Join-Path $root "dist") | Out-Null
+          & $iscc "/DAppVersion=1.0.1" "/DVST3Dir=$vst3" "/DStandaloneExe=$standalone" "/O$(Join-Path $root 'dist')" "Installer\YMYVerb.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
+          $setup = Join-Path $root "dist\YMYVerb_Setup.exe"
+          if (!(Test-Path $setup -PathType Leaf)) { throw "Setup.exe was not produced: $setup" }
+          Get-Item $setup | Format-List FullName,Length
+
+      - name: Package plugin and diagnostics
+        shell: pwsh
+        run: |
+          $root = $env:GITHUB_WORKSPACE
+          Compress-Archive -Path (Join-Path $root "build\YMYVerb_artefacts\Release\VST3\YMYVerb.vst3"), (Join-Path $root "build\YMYVerb_artefacts\Release\Standalone\YMYVerb.exe") -DestinationPath (Join-Path $root "dist\YMYVerb-PRO-Windows-x64.zip") -Force
+          Get-ChildItem (Join-Path $root "dist") | Select-Object Name,Length
+
+      - name: Upload installer and plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: YMYVerb-PRO-Windows-x64
+          path: |
+            dist/YMYVerb_Setup.exe
+            dist/YMYVerb-PRO-Windows-x64.zip
+            pluginval-logs/**
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30

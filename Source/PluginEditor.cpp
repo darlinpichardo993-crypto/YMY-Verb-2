@@ -63,9 +63,10 @@ void LnF::drawComboBox (Graphics& g, int w, int h, bool, int, int, int, int, Com
 void SimpleList::paintListBoxItem (int row, Graphics& g, int w, int h, bool sel)
 {
     if (sel) { g.setColour (Colour (0xff2c5da8)); g.fillRect (0, 0, w, h); }
+    if (! text || row < 0) return;
     g.setColour (sel ? Colours::white : Colour (0xffd9deea)); g.setFont (F ((float) h * 0.62f));
     g.drawText (text (row), 10, 0, w - 30, h, Justification::centredLeft);
-    if (starred && starred (row)) { g.setColour (Colour (0xfff2c14e)); g.drawText (String::fromUTF8 ("\xe2\x98\x85"), w - 24, 0, 18, h, Justification::centred); }
+    if (starred && starred (row)) { g.setColour (Colour (0xfff2c14e)); g.drawText (String::fromUTF8 ("\\xe2\\x98\\x85"), w - 24, 0, 18, h, Justification::centred); }
 }
 
 // ------------------------------------------------------------------ knob / meter
@@ -163,7 +164,8 @@ YmyEditor::YmyEditor (YmyProcessor& p) : AudioProcessorEditor (&p), proc (p), ca
     descLabel.setColour (Label::textColourId, Colour (0xffe8ecf5)); descLabel.setJustificationType (Justification::topLeft); descLabel.setBorderSize (BorderSize<int> (6));
 
     // transport-style preset buttons (header + cluster share the same handlers)
-    auto save = [this] { promptSave (false); }, saveAs = [this] { promptSave (true); };
+    auto save = [this] { promptSave (false); };
+    auto saveAs = [this] { promptSave (true); };
     auto ab = [this] { proc.toggleAB(); abBtn->setButtonText (proc.getABSlot() == 0 ? "A / B  (A)" : "A / B  (B)"); };
     mkBtn ("<", [this] { stepPreset (-1); }, true); mkBtn (">", [this] { stepPreset (1); }, true);
     saveBtn = mkBtn ("Save", save, true); mkBtn ("Save As", saveAs, true); abBtn = mkBtn ("A / B", ab, true);
@@ -185,12 +187,24 @@ YmyEditor::YmyEditor (YmyProcessor& p) : AudioProcessorEditor (&p), proc (p), ca
     addAndMakeVisible (catList); addAndMakeVisible (presetList);
     for (auto* l : { &catList, &presetList }) { l->setColour (ListBox::backgroundColourId, Colours::transparentBlack); l->setRowHeight (22); }
     catModel.count = [this] { return cats.size(); };
-    catModel.text = [this] (int i) { return cats[i]; };
-    catModel.select = [this] (int i) { if (updatingUI) return; catSel = i; refreshPresetUI (true); };
+    catModel.text = [this] (int i) { return isPositiveAndBelow (i, cats.size()) ? cats[i] : String(); };
+    catModel.select = [this] (int i) { if (updatingUI || ! isPositiveAndBelow (i, cats.size())) return; catSel = i; refreshPresetUI (true); };
     listModel.count = [this] { return (int) shownIdx.size(); };
-    listModel.text = [this] (int i) { return proc.getPresets()[(size_t) shownIdx[(size_t) i]].name; };
-    listModel.starred = [this] (int i) { return proc.isFavorite (shownIdx[(size_t) i]); };
-    listModel.select = [this] (int i) { if (updatingUI) return; proc.loadPreset (shownIdx[(size_t) i]); refreshPresetUI (false); };
+    listModel.text = [this] (int i) {
+        if (! isPositiveAndBelow (i, (int) shownIdx.size())) return String();
+        const int presetIndex = shownIdx[(size_t) i];
+        const auto& presets = proc.getPresets();
+        return isPositiveAndBelow (presetIndex, (int) presets.size()) ? presets[(size_t) presetIndex].name : String();
+    };
+    listModel.starred = [this] (int i) {
+        return isPositiveAndBelow (i, (int) shownIdx.size()) && proc.isFavorite (shownIdx[(size_t) i]);
+    };
+    listModel.select = [this] (int i) {
+        if (updatingUI || ! isPositiveAndBelow (i, (int) shownIdx.size())) return;
+        const int presetIndex = shownIdx[(size_t) i];
+        if (! isPositiveAndBelow (presetIndex, (int) proc.getPresets().size())) return;
+        proc.loadPreset (presetIndex); refreshPresetUI (false);
+    };
     presetBox.onChange = [this] { if (updatingUI) return; const int id = presetBox.getSelectedId(); if (id > 0 && id - 1 != proc.getCurrentPreset()) { proc.loadPreset (id - 1); refreshPresetUI (false); } };
 
     addAndMakeVisible (meterIn); addAndMakeVisible (meterOut);
