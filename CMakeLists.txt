@@ -15,13 +15,14 @@ juce_add_plugin(YMYVerb
     PLUGIN_CODE Yvrb
     FORMATS VST3 Standalone
     PRODUCT_NAME "YMYVerb"
+    BUNDLE_ID "com.ymyrecords.ymyverb"
     VST3_CATEGORIES Fx Reverb
     IS_SYNTH FALSE NEEDS_MIDI_INPUT FALSE NEEDS_MIDI_OUTPUT FALSE
     COPY_PLUGIN_AFTER_BUILD FALSE
     ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/Resources/icon.png")
 
 target_sources(YMYVerb PRIVATE Source/PluginProcessor.cpp Source/PluginEditor.cpp)
-target_compile_definitions(YMYVerb PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0 JUCE_DISPLAY_SPLASH_SCREEN=0)
+target_compile_definitions(YMYVerb PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
 target_link_libraries(YMYVerb PRIVATE YMYVerbData juce::juce_audio_utils juce::juce_audio_processors juce::juce_audio_devices
     PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
 
