@@ -8,7 +8,7 @@
 | 34 presets de fábrica (JSON) | Incluidos; son **puntos de partida por diseño, no ajustes calibrados de oído** |
 | Plugin JUCE y editor con skin | Compilados en Release x64; **pluginval strictness 5 pasó**, incluyendo abrir el editor, abrirlo mientras procesa, audio, automatización, estado y buses |
 | VST3, aplicación Standalone e instalador | Generados por GitHub Actions y comprobados como archivos de salida |
-| Instalación | El Setup instala el VST3 en `C:\\Program Files\\Common Files\\VST3\\YMYVerb.vst3` y la aplicación independiente en Program Files |
+| Instalación | El Setup instala el VST3 en `C:\Program Files\Common Files\VST3\YMYVerb.vst3` y la aplicación independiente en Program Files |
 | Prueba dentro de FL Studio con audio real | **Pendiente de prueba en una instalación de usuario** |
 
 Nota de validación: el subtest interno de `vst3validator` de Steinberg se omite si esa herramienta no está configurada en el entorno de CI. Esto no impidió que la batería de `pluginval` strictness 5 terminara con `SUCCESS`. Los presets y el sonido todavía requieren escucha crítica con voces reales.
