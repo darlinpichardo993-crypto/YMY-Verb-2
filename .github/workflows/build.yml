@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - "fix/**"
+    paths-ignore:
+      - "README.md"
   pull_request:
     branches:
       - main
@@ -46,6 +48,28 @@ jobs:
           Write-Host "VST3 verified: $vst3"
           Write-Host "Standalone verified: $standalone"
 
+
+      - name: Validate VST3 with pluginval (strictness 5)
+        shell: pwsh
+        run: |
+          $root = $env:GITHUB_WORKSPACE
+          $vst3 = Join-Path $root "build\YMYVerb_artefacts\Release\VST3\YMYVerb.vst3"
+          $zip = Join-Path $root "pluginval.zip"
+          $dir = Join-Path $root "pluginval"
+          $logs = Join-Path $root "pluginval-logs"
+          Invoke-WebRequest -Uri "https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Windows.zip" -OutFile $zip
+          Expand-Archive -Path $zip -DestinationPath $dir -Force
+          $validator = Get-ChildItem $dir -Filter "pluginval.exe" -File -Recurse | Select-Object -First 1
+          if ($null -eq $validator) { throw "pluginval.exe was not found inside the official Windows release." }
+          New-Item -ItemType Directory -Force -Path $logs | Out-Null
+          & $validator.FullName --strictness-level 5 --timeout-ms 120000 --output-dir $logs --validate $vst3
+          $code = $LASTEXITCODE
+          if ($code -ne 0) {
+            Get-ChildItem $logs -File -ErrorAction SilentlyContinue | ForEach-Object { Write-Host (Get-Content $_.FullName -Raw) }
+            throw "pluginval failed with exit code $code."
+          }
+          Write-Host "pluginval strictness level 5 passed."
+
       - name: Ensure Inno Setup 6 is installed
         shell: pwsh
         run: |
@@ -83,6 +107,7 @@ jobs:
           path: |
             dist/YMYVerb_Setup.exe
             dist/YMYVerb-PRO-Windows-x64.zip
+            pluginval-logs/**
           if-no-files-found: error
           compression-level: 0
           retention-days: 30
