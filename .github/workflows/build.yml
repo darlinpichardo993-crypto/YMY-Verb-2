@@ -62,11 +62,14 @@ jobs:
           $validator = Get-ChildItem $dir -Filter "pluginval.exe" -File -Recurse | Select-Object -First 1
           if ($null -eq $validator) { throw "pluginval.exe was not found inside the official Windows release." }
           New-Item -ItemType Directory -Force -Path $logs | Out-Null
-          & $validator.FullName --strictness-level 5 --timeout-ms 120000 --output-dir $logs --validate $vst3
-          $code = $LASTEXITCODE
-          if ($code -ne 0) {
+          $stdout = Join-Path $root "pluginval-stdout.txt"
+          $stderr = Join-Path $root "pluginval-stderr.txt"
+          $process = Start-Process -FilePath $validator.FullName -ArgumentList @("--strictness-level", "5", "--timeout-ms", "120000", "--output-dir", $logs, "--validate", $vst3) -PassThru -Wait -NoNewWindow -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+          if (Test-Path $stdout) { Get-Content $stdout }
+          if (Test-Path $stderr) { Get-Content $stderr }
+          if ($process.ExitCode -ne 0) {
             Get-ChildItem $logs -File -ErrorAction SilentlyContinue | ForEach-Object { Write-Host (Get-Content $_.FullName -Raw) }
-            throw "pluginval failed with exit code $code."
+            throw "pluginval failed with exit code $($process.ExitCode)."
           }
           Write-Host "pluginval strictness level 5 passed."
 
