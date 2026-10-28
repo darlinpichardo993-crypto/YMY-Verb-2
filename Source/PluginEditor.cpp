@@ -163,7 +163,8 @@ YmyEditor::YmyEditor (YmyProcessor& p) : AudioProcessorEditor (&p), proc (p), ca
     descLabel.setColour (Label::textColourId, Colour (0xffe8ecf5)); descLabel.setJustificationType (Justification::topLeft); descLabel.setBorderSize (BorderSize<int> (6));
 
     // transport-style preset buttons (header + cluster share the same handlers)
-    auto save = [this] { promptSave (false); }, saveAs = [this] { promptSave (true); };
+    auto save = [this] { promptSave (false); };
+    auto saveAs = [this] { promptSave (true); };
     auto ab = [this] { proc.toggleAB(); abBtn->setButtonText (proc.getABSlot() == 0 ? "A / B  (A)" : "A / B  (B)"); };
     mkBtn ("<", [this] { stepPreset (-1); }, true); mkBtn (">", [this] { stepPreset (1); }, true);
     saveBtn = mkBtn ("Save", save, true); mkBtn ("Save As", saveAs, true); abBtn = mkBtn ("A / B", ab, true);
