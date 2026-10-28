@@ -63,9 +63,10 @@ void LnF::drawComboBox (Graphics& g, int w, int h, bool, int, int, int, int, Com
 void SimpleList::paintListBoxItem (int row, Graphics& g, int w, int h, bool sel)
 {
     if (sel) { g.setColour (Colour (0xff2c5da8)); g.fillRect (0, 0, w, h); }
+    if (! text || row < 0) return;
     g.setColour (sel ? Colours::white : Colour (0xffd9deea)); g.setFont (F ((float) h * 0.62f));
     g.drawText (text (row), 10, 0, w - 30, h, Justification::centredLeft);
-    if (starred && starred (row)) { g.setColour (Colour (0xfff2c14e)); g.drawText (String::fromUTF8 ("\xe2\x98\x85"), w - 24, 0, 18, h, Justification::centred); }
+    if (starred && starred (row)) { g.setColour (Colour (0xfff2c14e)); g.drawText (String::fromUTF8 ("\\xe2\\x98\\x85"), w - 24, 0, 18, h, Justification::centred); }
 }
 
 // ------------------------------------------------------------------ knob / meter
